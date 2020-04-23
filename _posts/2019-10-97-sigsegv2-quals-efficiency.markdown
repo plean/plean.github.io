@@ -316,11 +316,11 @@ On peut voir qu'un certain nombres de valeurs sont chargé puis utilisés par la
 On doit donc retrouver une entrée utilisateur validant les équations suivantes:
 
 ```python
-pow(input_input[0], 65537, 0x77c7742d) == 0x31420fa
-pow(input_input[1], 65537, 0x7d61e32d) == 0x2b74da6b
-pow(input_input[2], 65537, 0x7b4dbc19) == 0x638682bf
-pow(input_input[3], 65537, 0x62c26e5f) == 0x5941d721
-pow(input_input[4], 65537, 0x686493f7) == 0x5ced41bb
+pow(user_input[0], 65537, 0x77c7742d) == 0x31420fa
+pow(user_input[1], 65537, 0x7d61e32d) == 0x2b74da6b
+pow(user_input[2], 65537, 0x7b4dbc19) == 0x638682bf
+pow(user_input[3], 65537, 0x62c26e5f) == 0x5941d721
+pow(user_input[4], 65537, 0x686493f7) == 0x5ced41bb
 ```
 
 `N` ou le 3ème paramètre de `pow`, est suffisament petit pour être factorisé rapidement, on peut donc retrouver `p` et `q`, générer `d` et retrouver le plaintext en faisant `pow(c, d, N)`.
