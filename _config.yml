@@ -9,7 +9,7 @@
 title: Plean
 email: plean0702@gmail.com
 description: > # this means to ignore newlines until "baseurl:"
-  Here you'll be able to read my most (not really) recent (not really either) writeups (if I fell like writing).
+  Here you'll be able to read my most (not really) recent (not really either) writeups (if I feel like writing).
 baseurl: ""
 url: "https://plean.github.io/" # the base hostname & protocol for your site
 twitter_username: plean702
