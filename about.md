@@ -9,7 +9,7 @@ Hi,
 I'm a French student soon to be graduate, I have a NCSC-certified Msc in Cybersecurity (University of Kent, Canterbury, United Kingdom) and will have a Graduate Diploma in Information Technology (Epitech, Paris Graduate School of Digital Innovation, France).
 
 I have one year and a half of experience in the industry. I gathered that experience during three internships:
-- [Hoomano](https://hoomano.com/), where I was coding behavior apps for robots and
+- [Hoomano](https://hoomano.com/), where I was coding behavior apps for robots
 - [Sandblock](https://sandblock.io/), where I was web developer
 - [Epitech](https://www.epitech.eu/), where I was creating content for educational purpose in cybersecurity
 
