@@ -24,58 +24,58 @@ In retrospect this is the category where I spent the most time and the one I hav
 
 ### Lost Curve
 
-This challenge is about recovering $a$, $b$ and $p$ from two point, $P$ and $Q$ , over an elliptic curve.
-We know that $Q = 2P$.
+This challenge is about recovering `a`, `b` and `p` from two point, `P` and `Q` , over an elliptic curve.
+We know that `Q = 2P`.
 
-From the wikipedia article [elliptic curve point doubling](https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_doubling) we know that for $P + P = Q$
+From the wikipedia article [elliptic curve point doubling](https://en.wikipedia.org/wiki/Elliptic_curve_point_multiplication#Point_doubling) we know that for `P + P = Q`
 
-$$\lambda = \frac{3x_p^2 + a}{2y_p}$$
+![lostcurve_1](https://i.imgur.com/R4pwt9P.png)
 
-$$x_q = \lambda^2 - 2x_p$$
+![lostcurve_2](https://i.imgur.com/J726FVD.png)
 
-$$y_q = \lambda(x_p - x_q) - y_p$$
+![lostcurve_2](https://i.imgur.com/sCLInG5.png)
 
 So we can write
 
-$$\lambda^2 - 2x_p \equiv x_q \bmod p$$
+![lostcurve_3](https://i.imgur.com/JUgFvgN.png)
 
-$$ \lambda * (x_p - x_q) - y_p \equiv y_q \bmod p$$
+![lostcurve_4](https://i.imgur.com/zC6M7Ru.png)
 
 We also know this
 
-$$y_p^2 \bmod p = x_p^3 + ax_p + b \bmod p$$
+![lostcurve_5](https://i.imgur.com/zc6Ud09.png)
 
-$$y_q^2 \bmod p = x_q^3 + ax_q + b \bmod p$$
+![lostcurve_6](https://i.imgur.com/srnu6S4.png)
 
 So
 
-$$a x_p + p_x^3 - y_p^2 + b \equiv 0 \bmod p$$
+![lostcurve_7](https://i.imgur.com/Jv8G8Oh.png)
 
-$$a x_q + x_q^3 - y_q^2 + b \equiv 0 \bmod p$$
+![lostcurve_8](https://i.imgur.com/sjOrl1k.png)
 
-$$a (x_p - x_q)  + p_x^3 - x_q^3 + y_q^2 - y_p^2 \equiv  0 \bmod p$$
+![lostcurve_9](https://i.imgur.com/xO4Mo5Q.png)
 
 And
 
-$$2y_p(y_q + y_p)(x_p - x_q)^{-1} - 3p_x^2 \equiv a \bmod p$$
+![lostcurve_10](https://i.imgur.com/s79dlF2.png)
 
-$$a * (x_p - x_q) \equiv 2y_p(y_q + y_p) - 3p_x^2(x_p - x_q) \bmod p$$
+![lostcurve_11](https://i.imgur.com/SlYhmwG.png)
 
-$$a * (x_p - x_q) - 2y_p(y_q + y_p) - 3p_x^2(x_p - x_q)\equiv 0 \bmod p$$
+![lostcurve_12](https://i.imgur.com/HJe7dZW.png)
 
-Then we can use $P$ and $Q$
+Then we can use `P` and `Q`
 
-$$a * 223947800784872046728541 -373643754591624343961399513549268713118218577620028192683665984300940844 \equiv 0 \bmod p$$
+![lostcurve_13](https://i.imgur.com/g7aIHtR.png)
 
-$$a * 223947800784872046728541 -272670973033496745462375227964793651005730241280891435513738442680890779 \equiv 0 \bmod p$$
+![lostcurve_14](https://i.imgur.com/gE7HDDY.png)
 
 
 
-$$373643754591624343961399513549268713118218577620028192683665984300940844 - 272670973033496745462375227964793651005730241280891435513738442680890779 \equiv 0 \bmod p$$
+![lostcurve_15](https://i.imgur.com/Z69U5Ik.png)
 
-$$100972781558127598499024285584475062112488336339136757169927541620050065 \equiv 0 \bmod p$$
+![lostcurve_16](https://i.imgur.com/4jfEptn.png)
 
-We just need to factor this number to get $p$ and compute $a$ and $b$ from this for every factor of $p$ until we have a solution.
+We just need to factor this number to get `p` and compute `a` and `b` from this for every factor of `p` until we have a solution.
 
 Once implemented the whole script looks like this.
 
@@ -152,8 +152,8 @@ Not my strongest category but I managed to score some point here and there.
 ### Vice-VeRSA
 
 This challenge is a service that reverse a string and send it back. It uses JWT to ensure "security" but has two major flaws:
-- Because it uses the same key to encrypt every JWT you can use `gcd` to recover the modulo $N$ used when encrypting with rsa.
-- It also allows you to encrypt data with a different key  having a common prime factor, so you can again use `gcd` to get a multiple of a factor of $N$
+- Because it uses the same key to encrypt every JWT, so you can use `gcd` to recover the modulo `N` used when encrypting with rsa.
+- It also allows you to encrypt data with a different key having a common prime factor, so you can again use `gcd` to get a multiple of this factor
 
 Once you got this it is trivial to recover the private key and craft a malicious token.
 
